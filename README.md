@@ -29,10 +29,10 @@ written spec as the single source of truth at every stage:
 plan  ->  implement  ->  review  ->  verify  ->  merge
 ```
 
-- **`specs/`** — one folder per feature: `requirements.md` (what must be
+- **`SPECS/`** — the project constitution (`MISSION.md`, `TECH.md`,
+  `ROADMAP.md`) plus one folder per feature: `requirements.md` (what must be
   true), `plan.md` (how it will be built) and `validation.md` (how we will
-  prove it works). Project-level constitution lives in `MISSION.md`,
-  `TECH.md` and `ROADMAP.md`.
+  prove it works).
 - **`src/`** — the agent pipeline implementation.
 - **`tests/`** — automated tests, written first (Red/Green TDD).
 - **`.opencode/`** — agent/skill definitions that drive the SDD workflow.
