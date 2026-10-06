@@ -4,6 +4,7 @@ Long-polls Telegram, runs the Bouncer on photos, then the Interviewer
 state machine, Converter, Scripter, and Narrator voice note.
 """
 
+import asyncio
 import logging
 import os
 from collections.abc import Awaitable, Callable
@@ -11,6 +12,7 @@ from io import BytesIO
 
 from dotenv import load_dotenv
 from telegram import Update
+from telegram.error import NetworkError, TimedOut
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -18,6 +20,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from telegram.request import HTTPXRequest
 
 from src.agents.bouncer import (
     BOUNCER_ERROR_REPLY,
@@ -49,8 +52,34 @@ CONVERTER = ConverterAgent()
 SCRIPTER = ScripterAgent()
 NARRATOR = Narrator()
 STORE = SessionStore()
+_PENDING: dict[int, Turn] = {}
 
 ReplySink = Callable[[str], Awaitable[object]]
+
+
+def build_application(token: str) -> Application:
+    """Build the bot with enough time to upload the picture and the voice note."""
+    request = HTTPXRequest(
+        connect_timeout=30.0,
+        read_timeout=30.0,
+        write_timeout=30.0,
+        pool_timeout=10.0,
+        media_write_timeout=120.0,
+    )
+    return Application.builder().token(token).request(request).build()
+
+
+async def _send_with_retry(send: Callable[[], Awaitable[object]], what: str) -> None:
+    """Try a Telegram send three times. A slow upload must not drop the ending."""
+    for attempt in range(1, 4):
+        try:
+            await send()
+            return
+        except (TimedOut, NetworkError):
+            logger.warning("%s send stalled (attempt %s)", what, attempt)
+            if attempt == 3:
+                raise
+            await asyncio.sleep(2)
 
 
 def greeting() -> str:
@@ -126,24 +155,45 @@ async def _download_photo(update: Update) -> bytes | None:
 
 async def _deliver(update: Update, turn: Turn) -> None:
     """Send text, the hybrid still, and the voice note, in that order."""
-    if update.message is None:
+    message = update.message
+    if message is None:
         return
+
+    def send_photo(image: bytes) -> Callable[[], Awaitable[object]]:
+        async def run() -> None:
+            photo = BytesIO(image)
+            photo.name = "hybrid.png"
+            await message.reply_photo(photo=photo)
+
+        return run
+
+    def send_text(text: str) -> Callable[[], Awaitable[object]]:
+        async def run() -> None:
+            await message.reply_text(text)
+
+        return run
+
+    def send_voice(audio: bytes) -> Callable[[], Awaitable[object]]:
+        async def run() -> None:
+            voice = BytesIO(audio)
+            voice.name = "documentary.ogg"
+            await message.reply_voice(voice=voice)
+
+        return run
+
     for image in turn.photos:
-        photo = BytesIO(image)
-        photo.name = "hybrid.png"
-        await update.message.reply_photo(photo=photo)
+        await _send_with_retry(send_photo(image), "picture")
     for text in turn.replies:
-        await update.message.reply_text(text)
+        await _send_with_retry(send_text(text), "message")
     for audio in turn.voices:
-        voice = BytesIO(audio)
-        voice.name = "documentary.ogg"
-        await update.message.reply_voice(voice=voice)
+        await _send_with_retry(send_voice(audio), "voice note")
 
 
 async def _reset_and_greet(update: Update) -> None:
     """Purge one chat and send the greeting plus the photo prompt."""
     if update.message is None or update.effective_chat is None:
         return
+    _PENDING.pop(update.effective_chat.id, None)
     STORE.reset(update.effective_chat.id)
     logger.info("session reset for chat_id=%s", update.effective_chat.id)
     await update.message.reply_text(greeting())
@@ -170,16 +220,37 @@ async def echo(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
     text = update.message.text or ""
     phase = STORE.get(chat_id).phase
     logger.info("incoming text: chat_id=%s phase=%s text=%r", chat_id, phase, text)
-    turn = await handle_text(
-        STORE,
-        chat_id,
-        text,
-        INTERVIEWER,
-        CONVERTER,
-        SCRIPTER,
-        NARRATOR,
-    )
-    await _deliver(update, turn)
+
+    async def emit(piece: Turn) -> None:
+        await _deliver(update, piece)
+
+    turn = _PENDING.get(chat_id)
+    if turn is None:
+        turn = await handle_text(
+            STORE,
+            chat_id,
+            text,
+            INTERVIEWER,
+            CONVERTER,
+            SCRIPTER,
+            NARRATOR,
+            emit,
+        )
+    if turn.sent:
+        _PENDING.pop(chat_id, None)
+        return
+    try:
+        await _deliver(update, turn)
+    except (TimedOut, NetworkError):
+        if turn.photos or turn.voices:
+            _PENDING[chat_id] = turn
+        logger.exception("delivery stalled for chat_id=%s", chat_id)
+        await update.message.reply_text(
+            "The ending is ready, but Telegram was slow. "
+            "Send any message and I will send it again."
+        )
+        return
+    _PENDING.pop(chat_id, None)
 
 
 async def photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -231,7 +302,7 @@ def main() -> None:
     if not token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN missing from .env")
 
-    app = Application.builder().token(token).build()
+    app = build_application(token)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("restart", restart))
     app.add_handler(MessageHandler(filters.PHOTO, photo))

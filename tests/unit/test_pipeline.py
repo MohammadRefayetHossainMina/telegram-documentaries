@@ -1,5 +1,6 @@
 """Unit tests for the interview state machine and documentary handoff."""
 
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ from src.pipeline import (
     ASK_FOR_PHOTO,
     DONE_REPLY,
     PHOTO_DURING_INTERVIEW,
+    Turn,
     handle_text,
     photo_block_message,
     produce_documentary,
@@ -203,3 +205,58 @@ async def test_narrator_voice_call_holds_the_client(
     audio = await Narrator().speak(SCRIPT)
 
     assert audio == b"OggS-voice"
+
+
+async def test_picture_and_voice_are_made_together(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(media, "MEDIA_ROOT", tmp_path)
+    store = SessionStore()
+    portrait = media.save_chat_file(12, "portrait.jpg", b"jpeg-bytes")
+    store.update(
+        12,
+        phase="producing",
+        question_index=6,
+        answers=["a", "b", "c", "d", "e", "f"],
+        photo_path=portrait,
+        media_paths=[portrait],
+    )
+    order: list[str] = []
+
+    async def render(_image: bytes, _dossier: Dossier) -> bytes:
+        order.append("image-start")
+        await asyncio.sleep(0.05)
+        order.append("image-end")
+        return IMAGE
+
+    async def write(_dossier: Dossier) -> str:
+        order.append("script")
+        return SCRIPT
+
+    async def speak(_script: str) -> bytes:
+        order.append("voice-start")
+        await asyncio.sleep(0.05)
+        order.append("voice-end")
+        return VOICE
+
+    sent: list[Turn] = []
+
+    async def emit(piece: Turn) -> None:
+        sent.append(piece)
+
+    turn = await produce_documentary(
+        store,
+        12,
+        InterviewerAgent(summarizer=lambda _answers: DOSSIER),
+        ConverterAgent(renderer=render),
+        ScripterAgent(writer=write),
+        Narrator(speaker=speak),
+        emit,
+    )
+
+    assert order.index("voice-start") < order.index("image-end")
+    assert [piece.photos for piece in sent] == [[IMAGE], [], []]
+    assert [piece.replies for piece in sent] == [[], [SCRIPT], []]
+    assert [piece.voices for piece in sent] == [[], [], [VOICE]]
+    assert turn.sent is True
+    assert store.get(12).phase == "complete"

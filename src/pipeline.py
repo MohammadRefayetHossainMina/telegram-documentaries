@@ -5,7 +5,9 @@ module asks one question at a time, then calls Converter, Scripter, and
 the Narrator tool.
 """
 
+import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -41,6 +43,10 @@ class Turn:
     replies: list[str] = field(default_factory=list)
     photos: list[bytes] = field(default_factory=list)
     voices: list[bytes] = field(default_factory=list)
+    sent: bool = False
+
+
+Emit = Callable[[Turn], Awaitable[None]]
 
 
 def photo_block_message(phase: str) -> str | None:
@@ -57,9 +63,18 @@ async def produce_documentary(
     converter: ConverterAgent,
     scripter: ScripterAgent,
     narrator: Narrator,
+    emit: Emit | None = None,
 ) -> Turn:
-    """Run dossier, hybrid image, script, and voice note for one chat."""
+    """Run dossier, hybrid image, script, and voice note for one chat.
+
+    The picture and the paragraph are made at the same time. The voice
+    starts as soon as the paragraph exists, and each piece can be sent
+    as soon as it is ready.
+    """
     state = store.get(chat_id)
+    image_task: asyncio.Task[bytes] | None = None
+    script_task: asyncio.Task[str] | None = None
+    audio_task: asyncio.Task[bytes] | None = None
     try:
         if not state.photo_path:
             raise PipelineError("portrait file is missing")
@@ -71,11 +86,19 @@ async def produce_documentary(
             suggested_animal=dossier.suggested_animal,
             phase="producing",
         )
-        image = await converter.render(portrait, dossier)
+        image_task = asyncio.create_task(converter.render(portrait, dossier))
+        script_task = asyncio.create_task(scripter.write_script(dossier))
+        script = await script_task
+        audio_task = asyncio.create_task(narrator.speak(script))
+        image = await image_task
         image_path = save_chat_file(chat_id, "hybrid.png", image)
-        script = await scripter.write_script(dossier)
-        audio = await narrator.speak(script)
+        if emit is not None:
+            await emit(Turn(photos=[image]))
+            await emit(Turn(replies=[script]))
+        audio = await audio_task
         voice_path = save_chat_file(chat_id, "narration.ogg", audio)
+        if emit is not None:
+            await emit(Turn(voices=[audio]))
         media_paths = [state.photo_path, image_path, voice_path]
         store.update(
             chat_id,
@@ -84,7 +107,12 @@ async def produce_documentary(
             media_paths=media_paths,
         )
         logger.info("documentary delivered for chat_id=%s", chat_id)
-        return Turn(replies=[script], photos=[image], voices=[audio])
+        return Turn(
+            replies=[script],
+            photos=[image],
+            voices=[audio],
+            sent=emit is not None,
+        )
     except PipelineError:
         logger.exception("documentary production failed for chat_id=%s", chat_id)
         store.update(chat_id, phase="producing")
@@ -93,6 +121,16 @@ async def produce_documentary(
         logger.exception("could not read or store media for chat_id=%s", chat_id)
         store.update(chat_id, phase="producing")
         return Turn(replies=[PRODUCTION_RETRY])
+    finally:
+        pending = [
+            task
+            for task in (image_task, script_task, audio_task)
+            if task is not None and not task.done()
+        ]
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
 
 
 async def handle_text(
@@ -103,6 +141,7 @@ async def handle_text(
     converter: ConverterAgent,
     scripter: ScripterAgent,
     narrator: Narrator,
+    emit: Emit | None = None,
 ) -> Turn:
     """Advance the interview, or retry production, from one text message."""
     state = store.get(chat_id)
@@ -112,7 +151,7 @@ async def handle_text(
         return Turn(replies=[DONE_REPLY])
     if state.phase == "producing":
         return await produce_documentary(
-            store, chat_id, interviewer, converter, scripter, narrator
+            store, chat_id, interviewer, converter, scripter, narrator, emit
         )
     if state.phase == "human_confirmed":
         store.update(chat_id, phase="interviewing", question_index=0)
@@ -132,5 +171,5 @@ async def handle_text(
 
     store.update(chat_id, phase="producing")
     return await produce_documentary(
-        store, chat_id, interviewer, converter, scripter, narrator
+        store, chat_id, interviewer, converter, scripter, narrator, emit
     )
