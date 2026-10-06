@@ -1,0 +1,137 @@
+Telegram conversation with @mrhminabot
+Recorded from the bot's own run on 7 October 2026.
+Times are local. "You" is the person in the chat. "Bot" is @mrhminabot.
+
+The finished documentary is the third attempt. The first two stopped early.
+
+
+Attempt 1 — photo received, interview did not continue
+-------------------------------------------------------
+23:34:36  You   [portrait photo]
+23:34:39  Bot   hey mate! Human spotted — this photo passes the Bouncer. Documentary prep is under way.
+23:34:40  Bot   Field note 1 of 6: What time do you usually fall asleep, and what drags you out of bed?
+
+The reply to that question was taken by another copy of the bot. This listener never recorded the answer. The other copy answered "hey mate!" because it had no interview in memory.
+
+
+Attempt 2 — six answers, then the picture step failed
+------------------------------------------------------
+23:46:14  You   [portrait photo]
+23:46:16  Bot   hey mate! Human spotted — this photo passes the Bouncer. Documentary prep is under way.
+23:46:17  Bot   Field note 1 of 6: What time do you usually fall asleep, and what drags you out of bed?
+
+00:00:36  You   Okay
+00:00:36  Bot   Field note 2 of 6: What do you snack on when you think nobody is watching?
+00:00:52  You   Icecream
+00:00:52  Bot   Field note 3 of 6: Describe the first ten minutes after you wake up.
+00:01:19  You   Toilet, dump , brush ,
+00:01:19  Bot   Field note 4 of 6: What tiny ritual do you repeat every single day?
+00:01:56  You   Recite aytul kursi
+00:01:56  Bot   Field note 5 of 6: When something annoys you, what do your hands or your voice do?
+00:02:21  You   Try to calm him down
+00:02:21  Bot   Field note 6 of 6: If your home were a wild territory, which corner is unmistakably yours?
+00:02:39  You   Top
+
+00:02:41  Bot   [started the documentary]
+               Animal: obsessive sugar-glider
+               Dossier opening: This specimen maintains a peculiar nocturnal routine, beginning the day with a f...
+               The picture step failed, so nothing was sent. The bot said:
+               The cutting room jammed. Send any message to try the ending again, or /restart for a clean slate.
+
+00:02:50  You   /restart
+00:02:50  Bot   hey mate!
+               Clean slate. Send me a clear portrait photo when you are ready.
+
+
+Attempt 3 — six answers, then the documentary
+----------------------------------------------
+00:16:02  You   [portrait photo]
+00:16:06  Bot   hey mate! Human spotted — this photo passes the Bouncer. Documentary prep is under way.
+00:16:06  Bot   Field note 1 of 6: What time do you usually fall asleep, and what drags you out of bed?
+00:16:20  You   Midnight
+00:16:20  Bot   Field note 2 of 6: What do you snack on when you think nobody is watching?
+00:16:28  You   Ice cream
+00:16:28  Bot   Field note 3 of 6: Describe the first ten minutes after you wake up.
+00:16:39  You   Go back to sleep
+00:16:39  Bot   Field note 4 of 6: What tiny ritual do you repeat every single day?
+00:16:54  You   Count f8ngers
+00:16:54  Bot   Field note 5 of 6: When something annoys you, what do your hands or your voice do?
+00:17:04  You   Look at them
+00:17:04  Bot   Field note 6 of 6: If your home were a wild territory, which corner is unmistakably yours?
+00:17:26  You   Last corner
+
+00:17:27  Bot   [interview finished]
+               Animal: obsessive moon-dazed owl
+               Dossier opening: This specimen operates on a strictly nocturnal schedule, emerging at midnight to...
+
+00:17:40  Bot   [hybrid picture ready, 689273 bytes]
+00:17:42  Bot   As the clock strikes midnight, our moon-dazed subject emerges from its burrow to forage for frozen dairy, a strange ritual for such a lethargic beast. It fixates on its own claws, counting them in a rhythmic trance before retreating to the shadows. Here, it maintains a haunting, static surveillance, eyes wide in a semi-comatose state of alert. This obsessive guardian of the corner remains trapped in a loop of icy snacking and territorial vigilance, a truly bizarre specimen of the nocturnal wilds.
+
+00:18:07  Bot   The cutting room jammed. Send any message to try the ending again, or /restart for a clean slate.
+               (The voice encoder was missing, so the picture and paragraph were held back.)
+
+00:20:00  Bot   [hybrid picture sent]
+               [the paragraph above sent again]
+               [voice note sent, documentary.ogg, 248614 bytes]
+
+That delivery is the moon-dazed owl documentary: the picture, the paragraph, and the voice note.
+
+
+Checks — random text, then a photo that is not a person
+--------------------------------------------------------
+00:39:51  You   hello from the hallway
+00:39:51  Bot   Send me a clear portrait photo of a person to begin.
+00:39:55  You   [picture of a tree]
+00:39:57  Bot   Ha! Just a very minimalist, geometric tree enjoying the breeze! No humans spotted in... This has no place in a human documentary — I only film humans. Try a selfie!
+
+
+Attempt 4 — six answers, then the alley-cat documentary
+--------------------------------------------------------
+00:47:09  You   [portrait photo]
+00:47:11  Bot   hey mate! Human spotted — this photo passes the Bouncer. Documentary prep is under way.
+00:47:12  Bot   Field note 1 of 6: What time do you usually fall asleep, and what drags you out of bed?
+00:47:21  You   Midnight
+00:47:21  Bot   Field note 2 of 6: What do you snack on when you think nobody is watching?
+00:47:43  You   Softdrinks
+00:47:43  Bot   Field note 3 of 6: Describe the first ten minutes after you wake up.
+00:47:56  You   Nap
+00:47:56  Bot   Field note 4 of 6: What tiny ritual do you repeat every single day?
+00:48:18  You   Drink a glass of water
+00:48:18  Bot   Field note 5 of 6: When something annoys you, what do your hands or your voice do?
+00:48:32  You   Look at them calmly
+00:48:32  Bot   Field note 6 of 6: If your home were a wild territory, which corner is unmistakably yours?
+00:48:47  You   Maybe in the middle
+
+00:48:48  Bot   [interview finished]
+               Animal: nocturnal alley cat
+               Dossier opening: This specimen operates on a nocturnal cycle, frequently delaying rest until the...
+
+00:49:04  Bot   Observe the nocturnal hominid, a creature of peculiar, inverted rhythms. As midnight tolls, this specimen avoids its lair, opting instead for a fizzy, caffeinated elixir to stave off the slumbering urge. It retreats to the shadows, lingering on the periphery like a cautious predator, its gaze fixed in a silent, icy stare. Whether napping in sporadic bursts or ritualistically hydrating upon waking, this stoic beast remains an enigma, haunting the mid-ground of the habitat with a calculated, unsettling indifference to the rest of the world.
+00:49:27  Bot   [voice note ready, 277011 bytes]
+               Telegram stalled while sending, so the picture, the paragraph, and the voice note were sent again right after.
+
+
+Attempt 5 — six answers, then the grizzly documentary
+-----------------------------------------------------
+00:54:26  You   [portrait photo]
+00:54:26  Bot   hey mate! Human spotted — this photo passes the Bouncer. Documentary prep is under way.
+00:54:27  Bot   Field note 1 of 6: What time do you usually fall asleep, and what drags you out of bed?
+00:54:36  You   8
+00:54:36  Bot   Field note 2 of 6: What do you snack on when you think nobody is watching?
+00:54:39  You   Nut
+00:54:39  Bot   Field note 3 of 6: Describe the first ten minutes after you wake up.
+00:54:43  You   Sleep
+00:54:43  Bot   Field note 4 of 6: What tiny ritual do you repeat every single day?
+00:54:48  You   Nothing
+00:54:48  Bot   Field note 5 of 6: When something annoys you, what do your hands or your voice do?
+00:54:58  You   Punch
+00:54:58  Bot   Field note 6 of 6: If your home were a wild territory, which corner is unmistakably yours?
+00:55:05  You   Front
+
+00:55:06  Bot   [interview finished]
+               Animal: dormant grizzly bear
+               Dossier opening: This specimen maintains a rigid nocturnal rhythm, clocking eight hours of rest w...
+
+00:55:22  Bot   Here in the dense undergrowth of the suburban bedroom, we observe the dormant creature in its natural habitat. It maintains a rigid nocturnal cycle, fueling its massive frame with nothing but handfuls of nuts. Observe the utter lack of complexity in its daily routine, punctuated only by sudden, aggressive bursts of kinetic energy. It prefers a frontal position, resting in a state of vigilant dormancy, ready to erupt into a high-impact defense mechanism at the slightest disturbance. A truly bizarre display of terrestrial wildlife in repose.
+00:55:50  Bot   [voice note sent, 271057 bytes]
+               The picture, the paragraph, and the voice note were delivered.
