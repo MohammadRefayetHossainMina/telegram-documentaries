@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Ground-truth full pre-commit suite (see SPECS/TECH.md "Testing & Verification").
+set -euo pipefail
+exec pre-commit run --all-files

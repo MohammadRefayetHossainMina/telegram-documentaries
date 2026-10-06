@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Ground-truth test runner (see SPECS/TECH.md "Testing & Verification").
+set -euo pipefail
+exec python3 -m pytest "$@"
