@@ -1,7 +1,10 @@
 python-telegram-bot>=21.0
 python-dotenv>=1.0
 google-genai>=0.2
+google-adk
+pydantic>=2
 pytest>=8.0
+pytest-asyncio>=0.23
 ruff>=0.6
 mypy>=1.11
 gitleaks>=8.18
