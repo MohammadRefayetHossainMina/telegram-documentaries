@@ -23,9 +23,9 @@ scripts/hooks
 
 ## Result
 
-`tests/unit/test_pipeline.py`: 8 passed.
+`scripts/test tests/unit/test_pipeline.py`: 10 passed.
 
-`scripts/hooks` has not been run in this step.
+`scripts/hooks` passed: ruff, ruff-format, mypy, gitleaks, and pytest.
 
 ## Recorded differences
 

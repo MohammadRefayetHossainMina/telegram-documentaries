@@ -5,7 +5,6 @@ gemini-3.1-flash-tts-preview and converted to OGG Opus, which Telegram
 accepts for send_voice.
 """
 
-import asyncio
 import inspect
 import logging
 import shutil
@@ -77,13 +76,25 @@ def _ffmpeg_command(source: Path, dest: Path) -> list[str]:
     ]
 
 
+def _ffmpeg_binary() -> str:
+    """Return an ffmpeg executable, including the bundled one if present."""
+    found = shutil.which("ffmpeg")
+    if found:
+        return found
+    try:
+        import imageio_ffmpeg
+    except ImportError as exc:
+        raise PipelineError(
+            "ffmpeg is missing, so the voice note cannot be built"
+        ) from exc
+    return str(imageio_ffmpeg.get_ffmpeg_exe())
+
+
 def to_ogg_opus(audio: bytes, mime: str) -> bytes:
     """Return OGG Opus bytes. Audio that is already OGG is passed through."""
     if "ogg" in mime or audio.startswith(b"OggS"):
         return audio
-    ffmpeg = shutil.which("ffmpeg")
-    if ffmpeg is None:
-        raise PipelineError("ffmpeg is missing, so the voice note cannot be built")
+    ffmpeg = _ffmpeg_binary()
     with tempfile.TemporaryDirectory() as tmp:
         folder = Path(tmp)
         source = _write_source(folder, audio, mime)
@@ -111,8 +122,11 @@ class Narrator:
         self._model = model
         self._speaker = speaker or self._gemini_speak
 
-    def _gemini_speak_sync(self, script: str) -> bytes:
-        response = gemini_client().models.generate_content(
+    async def _gemini_speak(self, script: str) -> bytes:
+        # Keep the client referenced until the audio is read. A temporary
+        # client is closed by garbage collection before the HTTP send.
+        client = gemini_client()
+        response = await client.aio.models.generate_content(
             model=self._model,
             contents=(f"{TTS_STYLE}\n\n{script}"),
             config=genai_types.GenerateContentConfig(
@@ -128,9 +142,6 @@ class Narrator:
         )
         data, mime = first_inline(response, "audio/")
         return to_ogg_opus(data, mime)
-
-    async def _gemini_speak(self, script: str) -> bytes:
-        return await asyncio.to_thread(self._gemini_speak_sync, script)
 
     async def speak(self, script: str) -> bytes:
         """Synthesize the script into OGG Opus bytes."""

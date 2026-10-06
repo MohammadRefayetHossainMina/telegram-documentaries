@@ -95,11 +95,24 @@ async def process_photo(image_bytes: bytes, chat_id: int, reply: ReplySink) -> N
         photo_path=photo_path,
         media_paths=[photo_path],
     )
+    logger.info("saved portrait for chat_id=%s path=%s", chat_id, photo_path)
     logger.info("photo approved (chat_id=%s)", chat_id)
     await reply(decision.reply)
     opening = question_at(0)
-    if opening:
+    if not opening:
+        logger.error("question 1 was empty (chat_id=%s)", chat_id)
+        await reply(
+            "The first question did not load. Send /restart and try the portrait again."
+        )
+        return
+    logger.info("dispatching question 1 (chat_id=%s)", chat_id)
+    try:
         await reply(opening)
+    except Exception:
+        logger.exception("could not send question 1 (chat_id=%s)", chat_id)
+        await reply(
+            "The first question did not go out. Send /restart and try the portrait again."
+        )
 
 
 async def _download_photo(update: Update) -> bytes | None:
@@ -155,7 +168,8 @@ async def echo(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     chat_id = update.effective_chat.id
     text = update.message.text or ""
-    logger.info("incoming text: chat_id=%s text=%r", chat_id, text)
+    phase = STORE.get(chat_id).phase
+    logger.info("incoming text: chat_id=%s phase=%s text=%r", chat_id, phase, text)
     turn = await handle_text(
         STORE,
         chat_id,
@@ -168,9 +182,9 @@ async def echo(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
     await _deliver(update, turn)
 
 
-async def photo(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
+async def photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Bouncer path, unless a photo arrives in the middle of the interview."""
-    if update.message is None or update.effective_chat is None:
+    if update.effective_chat is None:
         return
     chat_id = update.effective_chat.id
     blocked = photo_block_message(STORE.get(chat_id).phase)
@@ -180,13 +194,35 @@ async def photo(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
             STORE.get(chat_id).phase,
             chat_id,
         )
-        await update.message.reply_text(blocked)
+        await context.bot.send_message(chat_id=chat_id, text=blocked)
         return
     image_bytes = await _download_photo(update)
     if image_bytes is None:
         return
     logger.info("downloaded photo: bytes=%d (chat_id=%s)", len(image_bytes), chat_id)
-    await process_photo(image_bytes, chat_id, update.message.reply_text)
+
+    async def reply(text: str) -> None:
+        await context.bot.send_message(chat_id=chat_id, text=text)
+
+    await process_photo(image_bytes, chat_id, reply)
+
+
+async def _on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Tell the chat when a handler dies, instead of stopping quietly."""
+    logger.error("handler failed", exc_info=context.error)
+    chat = getattr(update, "effective_chat", None)
+    if chat is None:
+        return
+    try:
+        await context.bot.send_message(
+            chat_id=chat.id,
+            text=(
+                "Something broke before the next question. "
+                "Send /restart and try the portrait again."
+            ),
+        )
+    except Exception:
+        logger.exception("could not report the handler failure (chat_id=%s)", chat.id)
 
 
 def main() -> None:
@@ -200,6 +236,7 @@ def main() -> None:
     app.add_handler(CommandHandler("restart", restart))
     app.add_handler(MessageHandler(filters.PHOTO, photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    app.add_error_handler(_on_error)
 
     logger.info("Starting Telegram long polling")
     app.run_polling()

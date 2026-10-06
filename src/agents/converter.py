@@ -4,7 +4,6 @@ Gemini 3.1 Flash Image receives the original photo and the dossier in one
 call. There is no intermediate text-to-image prompt hop.
 """
 
-import asyncio
 import inspect
 import logging
 from collections.abc import Awaitable, Callable
@@ -44,8 +43,11 @@ class ConverterAgent:
         self._model = model
         self._renderer = renderer or self._gemini_render
 
-    def _gemini_render_sync(self, image_bytes: bytes, dossier: Dossier) -> bytes:
-        response = gemini_client().models.generate_content(
+    async def _gemini_render(self, image_bytes: bytes, dossier: Dossier) -> bytes:
+        # Keep the client referenced until the response is read. A temporary
+        # client is closed by garbage collection before the HTTP send.
+        client = gemini_client()
+        response = await client.aio.models.generate_content(
             model=self._model,
             contents=[
                 genai_types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
@@ -58,9 +60,6 @@ class ConverterAgent:
         data, mime = first_inline(response, "image/")
         logger.info("converter image ready: %d bytes (%s)", len(data), mime)
         return data
-
-    async def _gemini_render(self, image_bytes: bytes, dossier: Dossier) -> bytes:
-        return await asyncio.to_thread(self._gemini_render_sync, image_bytes, dossier)
 
     async def render(self, image_bytes: bytes, dossier: Dossier) -> bytes:
         """Fuse the portrait and dossier into hybrid image bytes."""

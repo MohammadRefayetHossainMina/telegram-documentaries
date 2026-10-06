@@ -151,3 +151,55 @@ def test_reset_deletes_temporary_media(
     store.reset(9)
     assert not Path(path).exists()
     assert store.get(9).phase == "idle"
+
+
+async def test_converter_image_call_holds_the_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inline = type("Inline", (), {"data": b"\x89PNG-hybrid", "mime_type": "image/png"})()
+    part = type("Part", (), {"inline_data": inline})()
+    content = type("Content", (), {"parts": [part]})()
+    candidate = type("Candidate", (), {"content": content})()
+    response = type("Response", (), {"candidates": [candidate]})()
+
+    class _Models:
+        async def generate_content(self, **_kwargs: object) -> object:
+            return response
+
+    class _Aio:
+        models = _Models()
+
+    class _Client:
+        aio = _Aio()
+
+    monkeypatch.setattr("src.agents.converter.gemini_client", lambda: _Client())
+
+    image = await ConverterAgent().render(b"jpeg-bytes", DOSSIER)
+
+    assert image == b"\x89PNG-hybrid"
+
+
+async def test_narrator_voice_call_holds_the_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inline = type("Inline", (), {"data": b"OggS-voice", "mime_type": "audio/ogg"})()
+    part = type("Part", (), {"inline_data": inline})()
+    content = type("Content", (), {"parts": [part]})()
+    candidate = type("Candidate", (), {"content": content})()
+    response = type("Response", (), {"candidates": [candidate]})()
+
+    class _Models:
+        async def generate_content(self, **_kwargs: object) -> object:
+            return response
+
+    class _Aio:
+        models = _Models()
+
+    class _Client:
+        aio = _Aio()
+
+    monkeypatch.setattr("src.agents.narrator.gemini_client", lambda: _Client())
+
+    audio = await Narrator().speak(SCRIPT)
+
+    assert audio == b"OggS-voice"
